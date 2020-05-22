@@ -159,6 +159,9 @@
                 this.weeks = weeks;
             },
             handleNextClick() {
+                if (this.currentWeek >= this.weeks.length && !this.checkAddWeek()) {
+                    return;
+                }
                 const day = this.weeks[this.currentWeek];
                 this.playDay(day);
             },
@@ -166,9 +169,6 @@
                 this.matchesInCurrentDay = day.length;
                 this.matchPlaying = true;
                 this.matchPlayed = 0;
-                if (this.currentWeek >= this.weeks.length && !this.checkAddWeek()) {
-                    return;
-                }
                 this.results = [];
                 this.currentWeek++;
 

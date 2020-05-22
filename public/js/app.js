@@ -2088,6 +2088,10 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
       this.weeks = weeks;
     },
     handleNextClick: function handleNextClick() {
+      if (this.currentWeek >= this.weeks.length && !this.checkAddWeek()) {
+        return;
+      }
+
       var day = this.weeks[this.currentWeek];
       this.playDay(day);
     },
@@ -2095,11 +2099,6 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
       this.matchesInCurrentDay = day.length;
       this.matchPlaying = true;
       this.matchPlayed = 0;
-
-      if (this.currentWeek >= this.weeks.length && !this.checkAddWeek()) {
-        return;
-      }
-
       this.results = [];
       this.currentWeek++;
 
