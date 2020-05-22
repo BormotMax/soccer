@@ -81,6 +81,10 @@
                 results: [],
                 currentWeek: 0,
                 matchesInDay: 2,
+                matchesInCurrentDay: 0,
+                matchPlayed: true,
+                matchPlaying: 0,
+                isPlayAll: false,
             }
         },
         computed: {
@@ -96,6 +100,10 @@
         },
         mounted() {
             this.fetchTeams();
+            this.$on('matchPlayed', this.handleMatchPlayed);
+        },
+        beforeDestroy() {
+            this.$off('matchPlayed');
         },
         methods: {
             fetchTeams() {
@@ -116,9 +124,7 @@
                         }
                     });
                     this.generateWeeks(teams);
-                }).catch((err) => {
-                    console.log('ERROR', err);
-                });
+                }).catch((err) => {});
             },
             generateWeeks(teams) {
                 let weeks = [];
@@ -157,24 +163,32 @@
                 this.playDay(day);
             },
             playDay(day) {
+                this.matchesInCurrentDay = day.length;
+                this.matchPlaying = true;
+                this.matchPlayed = 0;
                 if (this.currentWeek >= this.weeks.length && !this.checkAddWeek()) {
                     return;
                 }
                 this.results = [];
                 this.currentWeek++;
+
                 for (let i = 0; i < day.length; i++) {
                     this.playMatch(day[i]);
                 }
             },
             playMatch(teams) {
-                    const url = process.env.MIX_API + '/play';
-                    const data = {
-                        teams
-                    };
-                    axios.post(url, data, this.apiHeaders).then((res) => {
-                        this.updateLeague(res.data.data);
-                        console.log('res recieved');
-                    }).catch((err) => {});
+                const url = process.env.MIX_API + '/play';
+                const data = {
+                    teams
+                };
+                axios.post(url, data, this.apiHeaders).then((res) => {
+                    this.updateLeague(res.data.data);
+                    this.matchPlayed++;
+                    if (this.matchPlayed === this.matchesInCurrentDay) {
+                        this.matchPlaying = false;
+                        this.$emit('matchPlayed');
+                    }
+                }).catch((err) => {});
             },
             checkAddWeek() {
                 let addNewMatch = false;
@@ -200,17 +214,9 @@
                 }
             },
             handlePlayAllClick() {
-                while (this.currentWeek < this.weeks.length) {
-                    const day = this.weeks[this.currentWeek];
-                    this.results = [];
-                    for (let i = 0; i < day.length; i++) {
-                        this.playMatch(day[i]);
-                    }
-                    this.currentWeek++;
-                    if (this.currentWeek >= this.weeks.length) {
-                        this.checkAddWeek();
-                    }
-                }
+                this.isPlayAll = true;
+                const day = this.weeks[this.currentWeek];
+                this.playDay(day);
             },
             updateLeague(results) {
                 const teamsRes = results.teams;
@@ -247,6 +253,17 @@
                     teamB: teamB.name,
                     goalsB: teamB.goals,
                 });
+            },
+            handleMatchPlayed() {
+                if (!this.isPlayAll) {
+                    return;
+                }
+                if (this.currentWeek >= this.weeks.length && !this.checkAddWeek()) {
+                    this.isPlayAll = false;
+                    return;
+                }
+                const day = this.weeks[this.currentWeek];
+                this.playDay(day);
             }
         }
     }

@@ -36,7 +36,7 @@ class MatchController extends Controller
                     'id' => $teams[1]->id,
                     'goals' => $goals2,
                     'points' => $this->calculatePoints($goals2, $goals1),
-                    'out' => $goals2,
+                    'out' => $goals1,
                 ],
             ],
             'winner' => null

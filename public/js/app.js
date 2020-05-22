@@ -1996,7 +1996,11 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
       league: [],
       results: [],
       currentWeek: 0,
-      matchesInDay: 2
+      matchesInDay: 2,
+      matchesInCurrentDay: 0,
+      matchPlayed: true,
+      matchPlaying: 0,
+      isPlayAll: false
     };
   },
   computed: {
@@ -2014,6 +2018,10 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
   },
   mounted: function mounted() {
     this.fetchTeams();
+    this.$on('matchPlayed', this.handleMatchPlayed);
+  },
+  beforeDestroy: function beforeDestroy() {
+    this.$off('matchPlayed');
   },
   methods: {
     fetchTeams: function fetchTeams() {
@@ -2036,9 +2044,7 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
         });
 
         _this.generateWeeks(teams);
-      })["catch"](function (err) {
-        console.log('ERROR', err);
-      });
+      })["catch"](function (err) {});
     },
     generateWeeks: function generateWeeks(teams) {
       var weeks = [];
@@ -2086,6 +2092,10 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
       this.playDay(day);
     },
     playDay: function playDay(day) {
+      this.matchesInCurrentDay = day.length;
+      this.matchPlaying = true;
+      this.matchPlayed = 0;
+
       if (this.currentWeek >= this.weeks.length && !this.checkAddWeek()) {
         return;
       }
@@ -2107,7 +2117,13 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
       axios__WEBPACK_IMPORTED_MODULE_0___default.a.post(url, data, this.apiHeaders).then(function (res) {
         _this2.updateLeague(res.data.data);
 
-        console.log('res recieved');
+        _this2.matchPlayed++;
+
+        if (_this2.matchPlayed === _this2.matchesInCurrentDay) {
+          _this2.matchPlaying = false;
+
+          _this2.$emit('matchPlayed');
+        }
       })["catch"](function (err) {});
     },
     checkAddWeek: function checkAddWeek() {
@@ -2139,20 +2155,9 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
       }
     },
     handlePlayAllClick: function handlePlayAllClick() {
-      while (this.currentWeek < this.weeks.length) {
-        var day = this.weeks[this.currentWeek];
-        this.results = [];
-
-        for (var i = 0; i < day.length; i++) {
-          this.playMatch(day[i]);
-        }
-
-        this.currentWeek++;
-
-        if (this.currentWeek >= this.weeks.length) {
-          this.checkAddWeek();
-        }
-      }
+      this.isPlayAll = true;
+      var day = this.weeks[this.currentWeek];
+      this.playDay(day);
     },
     updateLeague: function updateLeague(results) {
       var teamsRes = results.teams;
@@ -2194,6 +2199,19 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
         teamB: teamB.name,
         goalsB: teamB.goals
       });
+    },
+    handleMatchPlayed: function handleMatchPlayed() {
+      if (!this.isPlayAll) {
+        return;
+      }
+
+      if (this.currentWeek >= this.weeks.length && !this.checkAddWeek()) {
+        this.isPlayAll = false;
+        return;
+      }
+
+      var day = this.weeks[this.currentWeek];
+      this.playDay(day);
     }
   }
 });
