@@ -1956,6 +1956,38 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 //
 //
 //
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 
 /* harmony default export */ __webpack_exports__["default"] = ({
   data: function data() {
@@ -1963,7 +1995,8 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
       weeks: [],
       league: [],
       results: [],
-      currentWeek: 0
+      currentWeek: 0,
+      matchesInDay: 2
     };
   },
   computed: {
@@ -1972,6 +2005,11 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       };
+    },
+    totalTable: function totalTable() {
+      return this.league.sort(function (a, b) {
+        return b.points - a.points;
+      });
     }
   },
   mounted: function mounted() {
@@ -1983,23 +2021,180 @@ function _defineProperty(obj, key, value) { if (key in obj) { Object.definePrope
 
       var url = "http://localhost:8000/api" + '/teams';
       axios__WEBPACK_IMPORTED_MODULE_0___default.a.get(url, this.apiHeaders).then(function (res) {
-        console.log('result', res.data.data.teams);
-        _this.league = res.data.data.teams.map(function (team) {
+        var teams = res.data.data.teams;
+        _this.league = teams.map(function (team) {
           return _objectSpread({
             points: 0,
             won: 0,
             loss: 0,
             draw: 0,
             played: 0,
-            diff: 0
+            diff: 0,
+            goals: 0,
+            out: 0
           }, team);
         });
+
+        _this.generateWeeks(teams);
       })["catch"](function (err) {
         console.log('ERROR', err);
       });
     },
-    generateWeeks: function generateWeeks(teams) {},
-    playMatch: function playMatch() {}
+    generateWeeks: function generateWeeks(teams) {
+      var weeks = [];
+
+      for (var i = 0; i < teams.length; i++) {
+        var idA = teams[i].id;
+
+        for (var j = 0; j < teams.length; j++) {
+          var idB = teams[j].id;
+          var matchFound = false;
+          var isPushed = false;
+
+          for (var k = 0; k < weeks.length; k++) {
+            var day = weeks[k];
+            var teamFound = false;
+
+            for (var m = 0; m < day.length; m++) {
+              var match = day[m];
+
+              if (match.includes(idA) && match.includes(idB)) {
+                matchFound = true;
+              }
+
+              if (match.includes(idA) || match.includes(idB)) {
+                teamFound = true;
+              }
+            }
+
+            if (day.length === 1 && !teamFound && idA !== idB) {
+              weeks[k].push([idA, idB]);
+              isPushed = true;
+            }
+          }
+
+          if (idA !== idB && !matchFound && !isPushed) {
+            weeks.push([[idA, idB]]);
+          }
+        }
+      }
+
+      this.weeks = weeks;
+    },
+    handleNextClick: function handleNextClick() {
+      var day = this.weeks[this.currentWeek];
+      this.playDay(day);
+    },
+    playDay: function playDay(day) {
+      if (this.currentWeek >= this.weeks.length && !this.checkAddWeek()) {
+        return;
+      }
+
+      this.results = [];
+      this.currentWeek++;
+
+      for (var i = 0; i < day.length; i++) {
+        this.playMatch(day[i]);
+      }
+    },
+    playMatch: function playMatch(teams) {
+      var _this2 = this;
+
+      var url = "http://localhost:8000/api" + '/play';
+      var data = {
+        teams: teams
+      };
+      axios__WEBPACK_IMPORTED_MODULE_0___default.a.post(url, data, this.apiHeaders).then(function (res) {
+        _this2.updateLeague(res.data.data);
+
+        console.log('res recieved');
+      })["catch"](function (err) {});
+    },
+    checkAddWeek: function checkAddWeek() {
+      var addNewMatch = false;
+
+      for (var i = 0; i < this.league.length; i++) {
+        var idA = this.league[i].id;
+
+        for (var j = 0; j < this.league.length; j++) {
+          var idB = this.league[j].id;
+
+          if (idA !== idB && this.league[i].points === this.league[j].points) {
+            this.addToWeek([idA, idB]);
+            addNewMatch = true;
+          }
+        }
+      }
+
+      return addNewMatch;
+    },
+    addToWeek: function addToWeek(match) {
+      var weekLength = this.weeks.length;
+      var lastWeek = weekLength === 0 ? [] : this.weeks[weekLength - 1];
+
+      if (lastWeek.length > 1) {
+        this.weeks[weekLength].push(match);
+      } else {
+        this.weeks.push([match]);
+      }
+    },
+    handlePlayAllClick: function handlePlayAllClick() {
+      while (this.currentWeek < this.weeks.length) {
+        var day = this.weeks[this.currentWeek];
+        this.results = [];
+
+        for (var i = 0; i < day.length; i++) {
+          this.playMatch(day[i]);
+        }
+
+        this.currentWeek++;
+
+        if (this.currentWeek >= this.weeks.length) {
+          this.checkAddWeek();
+        }
+      }
+    },
+    updateLeague: function updateLeague(results) {
+      var teamsRes = results.teams;
+      var winner = results.winner;
+      var teamA;
+      var teamB;
+
+      for (var i = 0; i < teamsRes.length; i++) {
+        var res = teamsRes[i];
+
+        for (var t = 0; t < this.league.length; t++) {
+          if (this.league[t].id === res.id) {
+            this.league[t].points += res.points;
+            this.league[t].played++;
+            this.league[t].goals += res.goals;
+            this.league[t].out += res.out;
+            this.league[t].diff += this.league[t].goals - this.league[t].out;
+
+            if (winner === this.league[t].id) {
+              this.league[t].won++;
+            } else if (winner) {
+              this.league[t].loss++;
+            } else {
+              this.league[t].draw++;
+            }
+
+            if (!teamA) {
+              teamA = this.league[t];
+            } else {
+              teamB = this.league[t];
+            }
+          }
+        }
+      }
+
+      this.results.push({
+        teamA: teamA.name,
+        goalsA: teamA.goals,
+        teamB: teamB.name,
+        goalsB: teamB.goals
+      });
+    }
   }
 });
 
@@ -37549,8 +37744,10 @@ var render = function() {
   var _h = _vm.$createElement
   var _c = _vm._self._c || _h
   return _c("div", [
-    _c("div", { staticClass: "grid grid-cols-2 gap-3" }, [
+    _c("div", { staticClass: "grid grid-cols-3 gap-4" }, [
       _c("div", [
+        _c("h3", { staticClass: "text-center" }, [_vm._v("League Table")]),
+        _vm._v(" "),
         _c("table", { staticClass: "table-auto" }, [
           _vm._m(0),
           _vm._v(" "),
@@ -37563,11 +37760,11 @@ var render = function() {
                 ]),
                 _vm._v(" "),
                 _c("td", { staticClass: "border px-4 py-2" }, [
-                  _vm._v(" " + _vm._s(team.played))
+                  _vm._v(" " + _vm._s(team.points))
                 ]),
                 _vm._v(" "),
                 _c("td", { staticClass: "border px-4 py-2" }, [
-                  _vm._v(" " + _vm._s(team.points))
+                  _vm._v(" " + _vm._s(team.played))
                 ]),
                 _vm._v(" "),
                 _c("td", { staticClass: "border px-4 py-2" }, [
@@ -37591,10 +37788,102 @@ var render = function() {
           )
         ]),
         _vm._v(" "),
-        _vm._m(1)
+        _c("div", { staticClass: "flex flex-1" }, [
+          _c(
+            "button",
+            {
+              staticClass:
+                "flex-auto bg-transparent hover:bg-blue-500 text-blue-700 hover:text-white rounded",
+              on: {
+                click: function($event) {
+                  $event.preventDefault()
+                  return _vm.handlePlayAllClick($event)
+                }
+              }
+            },
+            [_vm._v("\n                    Play all\n                ")]
+          ),
+          _vm._v(" "),
+          _c(
+            "button",
+            {
+              staticClass:
+                "flex-auto bg-transparent hover:bg-blue-500 text-blue-700 hover:text-white rounded",
+              on: {
+                click: function($event) {
+                  $event.preventDefault()
+                  return _vm.handleNextClick($event)
+                }
+              }
+            },
+            [_vm._v("\n                    Next week\n                ")]
+          )
+        ])
       ]),
       _vm._v(" "),
-      _vm._m(2)
+      _c("div", { staticClass: "box-content border-2 border-gray-400 p-4" }, [
+        _c("h3", { staticClass: "text-center" }, [_vm._v("Match Results")]),
+        _vm._v(" "),
+        _vm.currentWeek
+          ? _c("h5", { staticClass: "text-center" }, [
+              _vm._v("\n                " + _vm._s(_vm.currentWeek)),
+              _c("sup", [_vm._v("th")]),
+              _vm._v(" Week Match Result\n            ")
+            ])
+          : _vm._e(),
+        _vm._v(" "),
+        _c(
+          "div",
+          _vm._l(_vm.results, function(result) {
+            return _c(
+              "div",
+              { key: result.teamA, staticClass: "flex flex-wrap" },
+              [
+                _c("span", { staticClass: "w-1/3" }, [
+                  _vm._v(_vm._s(result.teamA))
+                ]),
+                _vm._v(" "),
+                _c("span", { staticClass: "w-1/3 text-center" }, [
+                  _vm._v(_vm._s(result.goalsA) + " - " + _vm._s(result.goalsB))
+                ]),
+                _vm._v(" "),
+                _c("span", { staticClass: "w-1/3 text-right" }, [
+                  _vm._v(_vm._s(result.teamB))
+                ])
+              ]
+            )
+          }),
+          0
+        )
+      ]),
+      _vm._v(" "),
+      _c("div", { staticClass: "box-content border-2 border-gray-400 p-4" }, [
+        _vm.currentWeek
+          ? _c("h5", { staticClass: "text-center" }, [
+              _vm._v("\n                " + _vm._s(_vm.currentWeek)),
+              _c("sup", [_vm._v("th")]),
+              _vm._v(" of Championship\n            ")
+            ])
+          : _vm._e(),
+        _vm._v(" "),
+        _c(
+          "div",
+          _vm._l(_vm.totalTable, function(team) {
+            return _c(
+              "div",
+              { key: team.id, staticClass: "grid grid-cols-2" },
+              [
+                _c("span", [_vm._v(" " + _vm._s(team.name))]),
+                _vm._v(" "),
+                _c("span", { staticClass: "text-right" }, [
+                  _vm._v(" " + _vm._s(team.points))
+                ])
+              ]
+            )
+          }),
+          0
+        )
+      ])
     ])
   ])
 }
@@ -37605,52 +37894,20 @@ var staticRenderFns = [
     var _c = _vm._self._c || _h
     return _c("thead", [
       _c("tr", [
-        _c("th", { staticClass: "px-4 py-2" }, [_vm._v("Name")]),
+        _c("th", { staticClass: "px-3 py-1" }, [_vm._v("Teams")]),
         _vm._v(" "),
-        _c("th", { staticClass: "px-4 py-2" }, [_vm._v("PTS")]),
+        _c("th", { staticClass: "px-2 py-1" }, [_vm._v("PTS")]),
         _vm._v(" "),
-        _c("th", { staticClass: "px-4 py-2" }, [_vm._v("P")]),
+        _c("th", { staticClass: "px-2 py-1" }, [_vm._v("P")]),
         _vm._v(" "),
-        _c("th", { staticClass: "px-4 py-2" }, [_vm._v("W")]),
+        _c("th", { staticClass: "px-2 py-1" }, [_vm._v("W")]),
         _vm._v(" "),
-        _c("th", { staticClass: "px-4 py-2" }, [_vm._v("D")]),
+        _c("th", { staticClass: "px-2 py-1" }, [_vm._v("D")]),
         _vm._v(" "),
-        _c("th", { staticClass: "px-4 py-2" }, [_vm._v("L")]),
+        _c("th", { staticClass: "px-2 py-1" }, [_vm._v("L")]),
         _vm._v(" "),
-        _c("th", { staticClass: "px-4 py-2" }, [_vm._v("GD")])
+        _c("th", { staticClass: "px-2 py-1" }, [_vm._v("GD")])
       ])
-    ])
-  },
-  function() {
-    var _vm = this
-    var _h = _vm.$createElement
-    var _c = _vm._self._c || _h
-    return _c("div", { staticClass: "flex flex-1" }, [
-      _c(
-        "button",
-        {
-          staticClass:
-            "flex-auto bg-transparent hover:bg-blue-500 text-blue-700 hover:text-white rounded"
-        },
-        [_vm._v("Play all")]
-      ),
-      _vm._v(" "),
-      _c(
-        "button",
-        {
-          staticClass:
-            "flex-auto bg-transparent hover:bg-blue-500 text-blue-700 hover:text-white rounded"
-        },
-        [_vm._v("Next week")]
-      )
-    ])
-  },
-  function() {
-    var _vm = this
-    var _h = _vm.$createElement
-    var _c = _vm._self._c || _h
-    return _c("div", [
-      _c("h3", { staticClass: "text-center" }, [_vm._v("Results")])
     ])
   }
 ]
