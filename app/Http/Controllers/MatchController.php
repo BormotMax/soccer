@@ -53,7 +53,5 @@ class MatchController extends Controller
             'league' => $league,
             'matches' => $weekResults,
         ]);
-
-        
     }
 }

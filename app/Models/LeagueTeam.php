@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Model\Team;
+use App\Models\Team;
 
 class LeagueTeam extends Model
 {
@@ -22,6 +22,8 @@ class LeagueTeam extends Model
         'loss',
         'diff',
     ];
+
+    public $with = ['team'];
 
     /**
      * Team
