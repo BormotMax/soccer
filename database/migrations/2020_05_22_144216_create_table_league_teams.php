@@ -17,12 +17,14 @@ class CreateTableLeagueTeams extends Migration
             $table->id();
             $table->integer('league_id')->unsigned();
             $table->integer('team_id')->unsigned();
-            $table->integer('points')->unsigned();
-            $table->integer('played')->unsigned();
-            $table->integer('won')->unsigned();
-            $table->integer('draw')->unsigned();
-            $table->integer('loss')->unsigned();
-            $table->integer('diff')->unsigned();
+            $table->integer('points')->unsigned()->default(0);
+            $table->integer('played')->unsigned()->default(0);
+            $table->integer('won')->unsigned()->default(0);
+            $table->integer('draw')->unsigned()->default(0);
+            $table->integer('loss')->unsigned()->default(0);
+            $table->integer('diff')->default(0);
+            $table->integer('goals')->unsigned()->default(0);
+            $table->integer('out')->unsigned()->default(0);
             $table->timestamps();
         });
     }

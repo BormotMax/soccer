@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\League;
 
 class Match extends Model
 {
@@ -16,7 +17,16 @@ class Match extends Model
         'week',
         'team_a_id',
         'team_b_id',
-        'goals_a_id',
-        'goals_b_id',
+        'goals_a',
+        'goals_b',
     ];
+
+    /**
+     * current League
+     * @return League
+     */
+    public function league()
+    {
+        return $this->belongsTo(League::class);
+    }
 }

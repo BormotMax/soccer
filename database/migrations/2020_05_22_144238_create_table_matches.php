@@ -19,8 +19,8 @@ class CreateTableMatches extends Migration
             $table->integer('week')->unsigned();
             $table->integer('team_a_id')->unsigned();
             $table->integer('team_b_id')->unsigned();
-            $table->integer('goals_a_id')->unsigned()->nullable();
-            $table->integer('goals_b_id')->unsigned()->nullable();
+            $table->integer('goals_a')->unsigned()->nullable();
+            $table->integer('goals_b')->unsigned()->nullable();
             $table->timestamps();
         });
     }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Model\Team;
 
 class LeagueTeam extends Model
 {
@@ -21,4 +22,14 @@ class LeagueTeam extends Model
         'loss',
         'diff',
     ];
+
+    /**
+     * Team
+     * @return Team $team
+     */
+    public function team()
+    {
+        return $this->belongsTo(Team::class);
+    }
+
 }
