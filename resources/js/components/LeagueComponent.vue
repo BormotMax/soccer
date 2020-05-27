@@ -107,7 +107,11 @@
                     if (!res.data) {
                         return;
                     }
-                    this.teams = res.data.data.teams;
+                    this.teams = res.data.data.teams.map(team => ({
+                        ...team,
+                        name: team.team.name,
+                        id: team.team.id,
+                    }));
                 }).catch((err) => {});
             },
             handleNextClick() {

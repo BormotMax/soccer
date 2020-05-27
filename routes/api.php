@@ -14,6 +14,6 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('teams', 'TeamsController@index');
+Route::get('teams', 'MatchController@index');
 Route::post('playone', 'MatchController@playOne');
 Route::post('playall', 'MatchController@playAll');

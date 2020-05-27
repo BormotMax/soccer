@@ -9,6 +9,25 @@ use App\Services\MatchService;
 
 class MatchController extends Controller
 {
+     /**
+     * @return JsonResponse
+     */
+    public function index()
+    {
+        $league = League::firstOrCreate(['name' => League::MAIN_LEAGUE]);
+        $matchService = new MatchService($league);
+
+        $teams = Team::all();
+        $matchService->startChampionship($teams);
+        $league->refresh();
+
+        return response()->json([
+            'data' => [
+                'teams' => $league->teams,
+            ]
+        ]);
+    }
+
     /**
      * Play current week
      * @return JsonResponse
