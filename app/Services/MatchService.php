@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\{Match, League, Team, LeagueTeam};
 use Carbon\Carbon;
+use Illuminate\Support\Arr;
 
 class MatchService
 {
@@ -24,7 +25,7 @@ class MatchService
     public function __construct($league)
     {
         $this->league = $league;
-        $this->weeks = [];
+        $this->weeks =  collect([]);
     }
 
     /**
@@ -46,13 +47,13 @@ class MatchService
      */
     private function createSchedule($teams)
     {
-        foreach ($teams as $teamA) {
+        $teams->each(function ($teamA, $keyA) {
             $teamAId = $teamA->id;
             $leagueTeam = LeagueTeam::create([
                 'league_id' => $this->league->id,
                 'team_id' => $teamA->id,
             ]);
-            foreach ($teams as $teamB) {
+            $teams->each(function ($teamB, $keyB) {
                 $teamBId = $teamB->id;
                 if (
                     $teamAId !== $teamBId
@@ -60,8 +61,8 @@ class MatchService
                 ) {
                     $weeks = $this->addMatch($teamAId, $teamBId);
                 }
-            }
-        }
+            });
+        });
     }
 
     /** 
@@ -73,14 +74,7 @@ class MatchService
     */
     private function isTeamInCurrentWeek(int $teamId, array $week): bool
     {
-        $isInWeek = false;
-        foreach ($week as $match) {
-            if (in_array($teamId, $match)) {
-                $isInWeek = true;
-            }
-        }
-
-        return $isInWeek;
+        return Arr::has($week, $teamId);
     }
 
     /** 
@@ -92,16 +86,8 @@ class MatchService
     */
     private function isMatchInSchedule(int $teamAId, int $teamBId): bool
     {
-        $isInSchedule = false;
-        foreach ($this->weeks as $week) {
-            foreach ($week as $match) {
-                if (in_array($teamAId, $match) && in_array($teamBId, $match)) {
-                    $isInSchedule = true;
-                }
-            }
-        }
-
-        return $isInSchedule;
+        return $this->weeks->contains([$teamAId, $teamBId]) 
+                || $this->weeks->contains([$teamBId, $teamAId]);
     }
 
     /**
@@ -112,20 +98,21 @@ class MatchService
     {
         $isMatchAdded = false;
         $matchesInWeek = config('league.matches_in_week');
-        for ($i=0; $i < count($this->weeks); $i++) { 
+
+        $this->weeks->transform(function ($week, $key) {
             if (
-                !$this->isTeamInCurrentWeek($teamAId, $this->weeks[$i])
-                && !$this->isTeamInCurrentWeek($teamBId, $this->weeks[$i])
-                && count($this->weeks[$i]) < $matchesInWeek
+                !$this->isTeamInCurrentWeek($teamAId, $week)
+                && !$this->isTeamInCurrentWeek($teamBId, $week)
+                && count($week) < $matchesInWeek
             ) {
-                $this->weeks[$i][] = [$teamAId, $teamBId];
+                $week[] = [$teamAId, $teamBId];
                 $isMatchAdded = true;
             }
-        }
+            return $week;
+        });
         if (!$isMatchAdded) {
-            $this->weeks[] = [[$teamAId, $teamBId]];
+            $this->weeks->push([[$teamAId, $teamBId]]);
         }
-        $week = $this->getCurrentWeek();
     }
 
     /**
@@ -134,8 +121,7 @@ class MatchService
     private function writeSchedule()
     {
         $createData = [];
-        for ($i = 0; $i < count($this->weeks); $i++) {
-            $week = $this->weeks[$i];
+        $this->weeks->each(function ($week, $i) {
             foreach ($week as $match) {
                 $createData[] = [
                     'league_id' => $this->league->id,
@@ -146,7 +132,7 @@ class MatchService
                     'updated_at' => Carbon::now(),
                 ];
             }
-        }
+        });
 
         $this->league->update(['total_weeks' => $i]);
 
@@ -246,7 +232,6 @@ class MatchService
      */
     private function updateStatistic(int $teamId, array $statistic)
     {
-        // $currentStatistic = LeagueTeam
         $currentStatistic = $this->league->teams()->where('team_id', $teamId)->first();
         $currentStatistic->points += $statistic['points'];
         $currentStatistic->won += $statistic['won'];
